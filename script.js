@@ -1,25 +1,24 @@
-document.addEventListener("DOMContentLoaded", function() {
-  const QUIZ_API = "https://lamonta.onrender.com/api/quiz";
-  const ISCRIZIONE_API = "https://lamonta.onrender.com/api/iscrizione";
-
+document.addEventListener("DOMContentLoaded", () => {
   const quizForm = document.getElementById("quizForm");
-  const quizFeedback = document.getElementById("quizFeedback");
-  const iscrizioneForm = document.getElementById("iscrizioneForm");
-  const formFeedback = document.getElementById("formFeedback");
-  const finale = document.getElementById("finale");
-  const codicePartecipazione = document.getElementById("codicePartecipazione");
-  const pin = document.getElementById("pin");
-
-  let quizData = [];
 
   async function loadQuiz() {
-    const res = await fetch(QUIZ_API);
-    const data = await res.json();
-    quizData = data.quiz.slice(0, 4);
-    renderQuiz();
+    try {
+      const res = await fetch("https://lamonta.onrender.com/api/quiz");
+      console.log("Fetch quiz status:", res.status);
+      const data = await res.json();
+      console.log("Quiz data ricevuti:", data);
+      if (!data.quiz || data.quiz.length === 0) {
+        quizForm.innerHTML = "<p>Quiz non disponibile</p>";
+        return;
+      }
+      renderQuiz(data.quiz.slice(0, 4));
+    } catch (error) {
+      console.error("Errore fetch quiz:", error);
+      quizForm.innerHTML = "<p>Errore nel caricamento del quiz</p>";
+    }
   }
 
-  function renderQuiz() {
+  function renderQuiz(quizData) {
     quizForm.innerHTML = "";
     quizData.forEach((domanda, i) => {
       const fieldset = document.createElement("fieldset");
@@ -38,56 +37,6 @@ document.addEventListener("DOMContentLoaded", function() {
     submitBtn.type = "submit";
     quizForm.appendChild(submitBtn);
   }
-
-  quizForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    let punteggio = 0;
-    quizData.forEach((d, i) => {
-      const risposta = document.querySelector(`input[name="q${i}"]:checked`);
-      if (risposta && risposta.value === d.opzioneCorretta) {
-        punteggio++;
-      }
-    });
-
-    if (punteggio >= 3) {
-      quizFeedback.textContent = "";
-      quizForm.classList.add("hidden");
-      iscrizioneForm.classList.remove("hidden");
-    } else {
-      quizFeedback.textContent = `Hai totalizzato ${punteggio}/4. Riprova!`;
-    }
-  });
-
-  iscrizioneForm.addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const formData = new FormData(iscrizioneForm);
-    const data = Object.fromEntries(formData.entries());
-
-    data.risposteQuiz = quizData.map((d, i) => {
-      const risposta = document.querySelector(`input[name="q${i}"]:checked`);
-      return {
-        idDomanda: d.idDomanda,
-        rispostaUtente: risposta ? risposta.value : ""
-      };
-    });
-
-    const res = await fetch(ISCRIZIONE_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      codicePartecipazione.textContent = result.codicePartecipazione;
-      pin.textContent = result.pin;
-      iscrizioneForm.classList.add("hidden");
-      finale.classList.remove("hidden");
-    } else {
-      formFeedback.textContent = result.error || "Errore iscrizione.";
-    }
-  });
 
   loadQuiz();
 });
